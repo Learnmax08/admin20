@@ -69,13 +69,13 @@
                     <div class="p-3 border border-secondary rounded mb-4" style="background: rgba(255,255,255,0.02);">
                         <label class="form-label fw-bold text-info"><i class="fa-solid fa-calendar-days me-2"></i>1. පන්තිය තියෙන දිනය (Class Date)</label>
                         <input type="text" id="class-date" class="form-control mb-3" placeholder="උදා: Next Monday at 7.30 PM">
-                        <button onclick="updateDateOnly()" class="btn btn-update-date w-100">
+                        <button id="btn-date" class="btn btn-update-date w-100">
                             <i class="fa-solid fa-calendar-check me-2"></i>දිනය විතරක් Update කරන්න
                         </button>
                     </div>
 
                     <div class="p-3 border border-secondary rounded" style="background: rgba(255,255,255,0.02);">
-                        <h6 class="text-warning fw-bold mb-3"><i class="fa-solid fa-video me-2"></i>2. Zoom Credentials (ලින්ක් එක දාන වෙලාවට)</h6>
+                        <h6 class="text-warning fw-bold mb-3"><i class="fa-solid fa-video me-2"></i>2. Zoom Credentials (ලින්ක් එක දาන වෙලාවට)</h6>
                         
                         <div class="mb-3">
                             <label class="form-label text-white small">Zoom Lecture Link</label>
@@ -87,7 +87,7 @@
                             <input type="text" id="zoom-pass" class="form-control" placeholder="Unlock කරන්න දෙන Password එක">
                         </div>
 
-                        <button onclick="updateLinkAndPass()" class="btn btn-update-link w-100">
+                        <button id="btn-link" class="btn btn-update-link w-100">
                             <i class="fa-solid fa-key me-2"></i>Link & Password Update කරන්න
                         </button>
                     </div>
@@ -97,34 +97,74 @@
         </div>
     </div>
 
-    <script>
-        // පේජ් එක ලෝඩ් වෙද්දී කලින් සේව් කරපුවා කොටු ඇතුළට ගන්නවා
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+        import { getDatabase, ref, update, get } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+        // Firebase Config විස්තර
+        const firebaseConfig = {
+            apiKey: "AIzaSyBNVWTQLCDd1cOOU-cOdepjXPuCwH2__dw",
+            authDomain: "nexus-db7a5.firebaseapp.com",
+            databaseURL: "https://nexus-db7a5-default-rtdb.firebaseio.com",
+            projectId: "nexus-db7a5",
+            storageBucket: "nexus-db7a5.firebasestorage.app",
+            messagingSenderId: "599095336957",
+            appId: "1:599095336957:web:aed6923cea8bb43d068394"
+        };
+
+        // Firebase Init කිරීම
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const classRef = ref(db, 'liveClass');
+
+        // 📥 පේජ් එක ලෝඩ් වෙද්දී Firebase එකේ දැනට තියෙන දත්ත Textbox වලට ගැනීම
         document.addEventListener("DOMContentLoaded", function() {
-            if(localStorage.getItem('nexus_live_date')) document.getElementById('class-date').value = localStorage.getItem('nexus_live_date');
-            if(localStorage.getItem('nexus_live_link')) document.getElementById('zoom-link').value = localStorage.getItem('nexus_live_link');
-            if(localStorage.getItem('nexus_live_pass')) document.getElementById('zoom-pass').value = localStorage.getItem('nexus_live_pass');
+            get(classRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    if(data.date) document.getElementById('class-date').value = data.date;
+                    if(data.link) document.getElementById('zoom-link').value = data.link;
+                    if(data.password) document.getElementById('zoom-pass').value = data.password;
+                }
+            }).catch((error) => {
+                console.error("දත්ත කියවීමේ ගැටලුවක්: ", error);
+            });
         });
 
-        // ෆන්ක්ෂන් 1: දිනය විතරක් අප්ඩේට් කිරීම
+        // 📅 ෆන්ක්ෂන් 1: දිනය විතරක් අප්ඩේට් කිරීම
         function updateDateOnly() {
             const dateVal = document.getElementById('class-date').value;
             if(!dateVal) { alert("කරුණාකර දිනය ඇතුළත් කරන්න!"); return; }
             
-            localStorage.setItem('nexus_live_date', dateVal);
-            alert("📅 පන්තියේ දිනය සාර්ථකව වෙනස් වුණා!");
+            update(classRef, {
+                date: dateVal
+            }).then(() => {
+                alert("📅 පන්තියේ දිනය සාර්ථකව Cloud එකට Update වුණා!");
+            }).catch((error) => {
+                alert("ගැටලුවක් පවතී: " + error.message);
+            });
         }
 
-        // ෆන්ක්ෂන් 2: ලින්ක් එක සහ පස්වර්ඩ් එක අප්ඩේට් කිරීම
+        // 🔗 ෆන්ක්ෂන් 2: ලින්ක් එක සහ පස්වර්ඩ් එක අප්ඩේට් කිරීම
         function updateLinkAndPass() {
             const linkVal = document.getElementById('zoom-link').value;
             const passVal = document.getElementById('zoom-pass').value;
 
             if(!linkVal || !passVal) { alert("ලින්ක් එක සහ පස්වර්ඩ් එක දෙකම පුරවන්න!"); return; }
 
-            localStorage.setItem('nexus_live_link', linkVal);
-            localStorage.setItem('nexus_live_pass', passVal);
-            alert("🔗 Zoom Link එක සහ Password එක සාර්ථකව අප්ඩේට් වුණා!");
+            update(classRef, {
+                link: linkVal,
+                password: passVal
+            }).then(() => {
+                alert("🔗 Zoom Link එක සහ Password එක සාර්ථකව Cloud එකට Update වුණා!");
+            }).catch((error) => {
+                alert("ගැටලුවක් පවතී: " + error.message);
+            });
         }
+
+        // බටන් වලට Click Events ලින්ක් කිරීම
+        document.getElementById('btn-date').addEventListener('click', updateDateOnly);
+        document.getElementById('btn-link').addEventListener('click', updateLinkAndPass);
     </script>
 </body>
 </html>
